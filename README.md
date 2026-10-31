@@ -23,7 +23,7 @@ Every copy has the same generic play icon and the description "Java application"
 
 **Platforms:** Windows, Linux and macOS, each on x64 and ARM64.
 
-See [docs/ini.md](docs/ini.md) for all settings, and [docs/packaging.md](docs/packaging.md) for using it from a Maven build.
+See [docs/ini.md](docs/ini.md) for all settings, and [docs/packaging.md](docs/packaging.md) for the Maven plugin, which bundles every platform's binary.
 
 ## Building
 

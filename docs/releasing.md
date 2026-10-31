@@ -6,6 +6,8 @@
    ```
    scripts/publish-central.ps1 <version>
    ```
-   It downloads the release's binaries, verifies their checksums, and signs and uploads those files. Add `-DryRun` to try it with no signing, deploying to a temporary folder.
+   It downloads the release's binaries, verifies their checksums, bundles those files into the plugin, and signs and uploads it. Add `-DryRun` to try it with no signing, deploying to a temporary folder.
 4. Approve the deployment at https://central.sonatype.com/publishing/deployments. **Published versions can't be changed or deleted.**
 5. Update the version in `docs/packaging.md` and set `<revision>` to the next version.
+
+Central receives `bsnative-launcher-maven-plugin` and its parent POM `bsnative-launcher`. The binaries are published separately only on GitHub Releases.

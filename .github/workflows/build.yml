@@ -172,9 +172,33 @@ jobs:
           LC_ALL: C.UTF-8
         run: ./test/integration.ps1 -Launcher (Resolve-Path built/${{ matrix.platform.file }}) -JavaHome $env:JAVA_HOME
 
+  maven-plugin:
+    needs: [build-windows-x86_64, build-windows-arm64, build-linux, build-macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v7
+        with:
+          path: built
+      - name: Collect the binaries, as a release does
+        run: |
+          mkdir dist
+          for platform in windows-x86_64 windows-arm64; do
+            cp "built/launcher-$platform/launcher.exe" "dist/bsnative-launcher-$platform.exe"
+          done
+          for platform in linux-x86_64 linux-arm64 macosx-x86_64 macosx-arm64; do
+            cp "built/launcher-$platform/launcher" "dist/bsnative-launcher-$platform"
+          done
+      - name: Build and test the plugin
+        run: mvn -B -ntp verify
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
+    needs: [test, maven-plugin]
     runs-on: ubuntu-latest
     permissions:
       contents: write

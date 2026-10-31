@@ -9,7 +9,11 @@
 	<version>${revision}</version>
 	<packaging>pom</packaging>
 
-	<name>BSNative launcher</name>
+	<modules>
+		<module>maven-plugin</module>
+	</modules>
+
+	<name>BSNative launcher parent</name>
 	<description>Small prebuilt native launcher that runs a Java app under its own executable name, finding a JVM by itself. Copy it, rename it, and add an ini file.</description>
 	<url>https://github.com/jelinj8/Java-BSNative-launcher</url>
 
@@ -35,10 +39,10 @@
 	</scm>
 
 	<properties>
-		<revision>0.2.0</revision>
+		<revision>0.3.0</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<!-- the binaries GitHub Actions built, placed here by scripts/publish-central.ps1 -->
-		<binaries.dir>${project.basedir}/dist</binaries.dir>
+		<!-- the binaries GitHub Actions built, bundled by the plugin; scripts/publish-central.ps1 places them here -->
+		<binaries.dir>${maven.multiModuleProjectDirectory}/dist</binaries.dir>
 	</properties>
 
 	<build>
@@ -65,54 +69,6 @@
 						<goals>
 							<goal>clean</goal>
 						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.6.0</version>
-				<executions>
-					<execution>
-						<id>attach-binaries</id>
-						<phase>package</phase>
-						<goals>
-							<goal>attach-artifact</goal>
-						</goals>
-						<configuration>
-							<artifacts>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-windows-x86_64.exe</file>
-									<type>bin</type>
-									<classifier>windows-x86_64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-windows-arm64.exe</file>
-									<type>bin</type>
-									<classifier>windows-arm64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-linux-x86_64</file>
-									<type>bin</type>
-									<classifier>linux-x86_64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-linux-arm64</file>
-									<type>bin</type>
-									<classifier>linux-arm64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-macosx-x86_64</file>
-									<type>bin</type>
-									<classifier>macosx-x86_64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-macosx-arm64</file>
-									<type>bin</type>
-									<classifier>macosx-arm64</classifier>
-								</artifact>
-							</artifacts>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>

@@ -7,6 +7,7 @@ A native launcher that's copied and renamed per app, reads `<name>.ini`, finds a
 - `src/common/`: portable logic, all strings UTF-8. Keep platform calls behind the `plat_*` functions in `launcher.h`.
 - `src/common/launch.c`: the launch sequence, for all platforms.
 - `src/windows/`, `src/posix/`: the `plat_*` functions. Windows uses wide-character APIs, converting at the boundary. `src/posix/` covers Linux and macOS; macOS keeps the first thread in a run loop for GUI work.
+- `maven-plugin/`: the `bsnative-launcher:copy` goal, with the binaries from `dist/` bundled in its jar. Building it needs `dist/`: `gh release download <tag> --dir dist`, or the collection step in `build.yml`.
 - `docs/releasing.md`: GitHub Actions builds and releases tagged versions; Central publishing runs locally with `scripts/publish-central.ps1`, since the GPG key and Central token are local.
 - Don't use `JLI_Launch`: it's an internal JDK API that assumes it runs from inside the JDK.
 
