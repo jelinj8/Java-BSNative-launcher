@@ -21,9 +21,9 @@ Java runs inside the launcher's own process through the standard JNI invocation 
 
 The launcher doesn't change the exe's icon or version information, so it needs no patching and a signature would survive the rename. Your app's windows and any shortcuts can still have their own icons.
 
-**Status:** Windows x64 only so far. Linux, Maven Central publishing, and Maven packaging are planned.
+**Status:** Windows x64 only so far. Linux is planned.
 
-See [docs/ini.md](docs/ini.md) for all settings.
+See [docs/ini.md](docs/ini.md) for all settings, and [docs/packaging.md](docs/packaging.md) for using it from a Maven build.
 
 ## Building
 

@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A native launcher that's copied and renamed per app, reads `<name>.ini`, finds a JVM, and runs Java in its own process through `JNI_CreateJavaVM`. The binary is never patched per app. See `docs/ini.md`.
 
 - `src/common/`: portable logic, all strings UTF-8. Keep platform calls behind the `plat_*` functions in `launcher.h`.
-- `src/windows/`: wide-character APIs, converting at the boundary. Windows x64 is the only platform so far; Linux and Mac are planned, and Maven Central publishing and packaging from Maven are the long-term goal.
+- `src/windows/`: wide-character APIs, converting at the boundary. Windows x64 is the only platform so far; Linux and Mac are planned.
+- `docs/releasing.md`: GitHub Actions builds and releases tagged versions; Central publishing runs locally with `scripts/publish-central.ps1`, since the GPG key and Central token are local.
 - Don't use `JLI_Launch`: it's an internal JDK API that assumes it runs from inside the JDK.
 
 ## Commands

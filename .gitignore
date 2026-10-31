@@ -1,3 +1,6 @@
 build/
 built/
 *.exe
+dist/
+target/
+.flattened-pom.xml

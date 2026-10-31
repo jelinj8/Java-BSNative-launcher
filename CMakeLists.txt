@@ -12,7 +12,8 @@ file(TO_CMAKE_PATH "$ENV{JAVA_HOME}" JDK_HOME)
 set(COMMON src/common/launcher.c)
 
 if(WIN32)
-	add_executable(launcher WIN32 src/windows/main.c src/windows/platform.c ${COMMON})
+	enable_language(RC)
+	add_executable(launcher WIN32 src/windows/main.c src/windows/platform.c src/windows/launcher.rc ${COMMON})
 	target_include_directories(launcher PRIVATE "${JDK_HOME}/include" "${JDK_HOME}/include/win32")
 	target_compile_definitions(launcher PRIVATE UNICODE _UNICODE)
 	# no dependency on MinGW's runtime DLLs, so one copied file is all an app needs
