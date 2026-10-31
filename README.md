@@ -21,13 +21,13 @@ Java runs inside the launcher's own process through the standard JNI invocation 
 
 Every copy has the same generic play icon and the description "Java application", so nothing is patched and a signature would survive the rename. Your app's windows, and so its taskbar entry, and any shortcuts can have their own icons.
 
-**Status:** Windows x64 only so far. Linux is planned.
+**Status:** Windows x64 and ARM64, and Linux x64 and ARM64. Mac is planned.
 
 See [docs/ini.md](docs/ini.md) for all settings, and [docs/packaging.md](docs/packaging.md) for using it from a Maven build.
 
 ## Building
 
-Needs CMake, MinGW-w64, and `JAVA_HOME` pointing at a JDK for its JNI headers. GitHub Actions builds every push and keeps the binary as a build artifact.
+Needs CMake, a C compiler (MinGW-w64 on Windows, gcc on Linux), and `JAVA_HOME` pointing at a JDK for its JNI headers. GitHub Actions builds every push and keeps the binary as a build artifact.
 
 ```
 cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release

@@ -3,7 +3,37 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
 #include "../src/windows/platform_win.h"
+static void make_dir(const char *path) {
+	CreateDirectoryW(to_wide(path), NULL);
+}
+static void set_env(const char *name, const char *value) {
+	_wputenv_s(to_wide(name), to_wide(value));
+	SetEnvironmentVariableW(to_wide(name), to_wide(value));
+}
+static char *temp_root(void) {
+	wchar_t temp[MAX_PATH];
+	GetTempPathW(MAX_PATH, temp);
+	return str_fmt("%sbsnative-test-%lu", to_utf8(temp), GetCurrentProcessId());
+}
+#define ABSOLUTE_JAR "C:\\abs\\x.jar"
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "../src/common/launcher.h"
+static void make_dir(const char *path) {
+	mkdir(path, 0777);
+}
+static void set_env(const char *name, const char *value) {
+	setenv(name, value, 1);
+}
+static char *temp_root(void) {
+	return str_fmt("/tmp/bsnative-test-%ld", (long)getpid());
+}
+#define ABSOLUTE_JAR "/abs/x.jar"
+#endif
 
 static int failures;
 
@@ -26,14 +56,19 @@ static int failures;
 static char *root;
 
 static void write_file(const char *path, const char *text) {
-	FILE *file = _wfopen(to_wide(path), L"wb");
+	FILE *file = NULL;
+#ifdef _WIN32
+	file = _wfopen(to_wide(path), L"wb");
+#else
+	file = fopen(path, "wb");
+#endif
 	fputs(text, file);
 	fclose(file);
 }
 
 static char *fake_home(const char *name, const char *version, const char *arch) {
 	char *home = plat_join(root, name);
-	CreateDirectoryW(to_wide(home), NULL);
+	make_dir(home);
 	write_file(plat_join(home, "release"), str_fmt("IMPLEMENTOR=\"x\"\r\nJAVA_VERSION=\"%s\"\r\nOS_ARCH=\"%s\"\r\n", version, arch));
 	return home;
 }
@@ -41,7 +76,7 @@ static char *fake_home(const char *name, const char *version, const char *arch) 
 static void test_ini(void) {
 	launcher_config c;
 	char *error = NULL;
-	_wputenv(L"BSN_TEST_VAR=fromenv");
+	set_env("BSN_TEST_VAR", "fromenv");
 	CHECK(config_parse("\xEF\xBB\xBF# comment\r\n; comment\r\n\r\n main-class = com.example.Main \r\nclasspath=lib/*\nclasspath=${APP_DIR}/x.jar\n"
 			"min-java=21\nmax-java=25\njvm-option=-Xmx1m\njvm-option=-Da=b=c\narg=${ENV:BSN_TEST_VAR}\narg=#notacomment\n"
 			"runtime=auto\napp-id=my.app\nlog-file=logs/a.log\nworking-dir=inherit\n", "C:\\app", &c, &error) == 0);
@@ -93,7 +128,7 @@ static void test_runtime_check(void) {
 	launcher_config c = {0};
 	char *reason = NULL;
 	java_runtime r;
-	char *home = fake_home("j21", "21.0.5", "x86_64");
+	char *home = fake_home("j21", "21.0.5", PLAT_ARCH_NAME);
 	CHECK(runtime_check(home, &c, &r, &reason) == 1);
 	CHECK_STR(r.version, "21.0.5");
 	c.min_java = 21;
@@ -108,36 +143,36 @@ static void test_runtime_check(void) {
 	CHECK(runtime_check(home, &c, &r, &reason) == 0);
 	CHECK(strstr(reason, "newer than max-java 17") != NULL);
 	c.max_java = 0;
-	CHECK(runtime_check(fake_home("arm", "21", "aarch64"), &c, &r, &reason) == 0);
-	CHECK(strstr(reason, "aarch64") != NULL);
+	CHECK(runtime_check(fake_home("other", "21", "sparc"), &c, &r, &reason) == 0);
+	CHECK(strstr(reason, "sparc") != NULL);
 	CHECK(runtime_check(plat_join(root, "absent"), &c, &r, &reason) == 0);
 	char *empty = plat_join(root, "empty");
-	CreateDirectoryW(to_wide(empty), NULL);
+	make_dir(empty);
 	CHECK(runtime_check(empty, &c, &r, &reason) == 0);
 	CHECK(strstr(reason, "no release file") != NULL);
 }
 
 static void test_runtime_select(void) {
 	char *app = plat_join(root, "app");
-	CreateDirectoryW(to_wide(app), NULL);
+	make_dir(app);
 	launcher_config c = {0};
 	java_runtime r;
 	strlist report = {0};
 
-	c.runtime = fake_home("explicit", "11.0.1", "x86_64");
+	c.runtime = fake_home("explicit", "11.0.1", PLAT_ARCH_NAME);
 	CHECK(runtime_select(&c, app, &r, &report) == 1);
 	CHECK_STR(r.version, "11.0.1");
 	c.runtime = plat_join(root, "absent");
 	CHECK(runtime_select(&c, app, &r, &report) == 0);
 	c.runtime = NULL;
 
-	char *java_home = fake_home("envhome", "17.0.2", "x86_64");
-	_wputenv_s(L"JAVA_HOME", to_wide(java_home));
+	char *java_home = fake_home("envhome", "17.0.2", PLAT_ARCH_NAME);
+	set_env("JAVA_HOME", java_home);
 	CHECK(runtime_select(&c, app, &r, &report) == 1);
 	CHECK_STR(r.home, java_home);
 
 	char *bundled = plat_join(app, "runtime");
-	CreateDirectoryW(to_wide(bundled), NULL);
+	make_dir(bundled);
 	write_file(plat_join(bundled, "release"), "JAVA_VERSION=\"11.0.9\"\n");
 	CHECK(runtime_select(&c, app, &r, &report) == 1);
 	CHECK_STR(r.home, bundled);
@@ -153,8 +188,8 @@ static void test_runtime_select(void) {
 static void test_classpath(void) {
 	char *app = plat_join(root, "cpapp");
 	char *lib = plat_join(app, "lib");
-	CreateDirectoryW(to_wide(app), NULL);
-	CreateDirectoryW(to_wide(lib), NULL);
+	make_dir(app);
+	make_dir(lib);
 	write_file(plat_join(lib, "b.jar"), "");
 	write_file(plat_join(lib, "a.jar"), "");
 	write_file(plat_join(lib, "notes.txt"), "");
@@ -164,8 +199,9 @@ static void test_classpath(void) {
 	CHECK_STR(error, "classpath is required");
 
 	strlist_add(&c.classpath, "lib/*;classes");
-	strlist_add(&c.classpath, "C:\\abs\\x.jar");
-	char *expected = str_fmt("%s\\a.jar;%s\\b.jar;%s\\classes;C:\\abs\\x.jar", lib, lib, app);
+	strlist_add(&c.classpath, ABSOLUTE_JAR);
+	char separator = PLAT_PATH_SEPARATOR;
+	char *expected = str_fmt("%s%c%s%c%s%c%s", plat_join(lib, "a.jar"), separator, plat_join(lib, "b.jar"), separator, plat_join(app, "classes"), separator, ABSOLUTE_JAR);
 	CHECK_STR(classpath_build(&c, app, &error), expected);
 
 	launcher_config missing = {0};
@@ -175,10 +211,8 @@ static void test_classpath(void) {
 }
 
 int main(void) {
-	wchar_t temp[MAX_PATH];
-	GetTempPathW(MAX_PATH, temp);
-	root = str_fmt("%sbsnative-test-%lu", to_utf8(temp), GetCurrentProcessId());
-	CreateDirectoryW(to_wide(root), NULL);
+	root = temp_root();
+	make_dir(root);
 
 	test_ini();
 	test_versions();

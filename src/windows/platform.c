@@ -34,6 +34,120 @@ char *to_utf8(const wchar_t *text) {
 	return result;
 }
 
+static void write_handle(DWORD which, const char *text) {
+	HANDLE handle = GetStdHandle(which);
+	if (handle && handle != INVALID_HANDLE_VALUE) {
+		DWORD written;
+		WriteFile(handle, text, (DWORD)strlen(text), &written, NULL);
+	}
+}
+
+void plat_write_stdout(const char *text) {
+	write_handle(STD_OUTPUT_HANDLE, text);
+}
+
+void plat_write_stderr(const char *text) {
+	write_handle(STD_ERROR_HANDLE, text);
+}
+
+int plat_has_stderr(void) {
+	HANDLE handle = GetStdHandle(STD_ERROR_HANDLE);
+	return handle && handle != INVALID_HANDLE_VALUE;
+}
+
+/** A GUI app has no other way to say why it didn't start. */
+void plat_report_error(const char *message) {
+	plat_write_stderr(str_fmt("%s\n", message));
+	char *no_dialog = plat_getenv("BSNATIVE_LAUNCHER_NO_DIALOG");
+	if (!no_dialog || !*no_dialog)
+		MessageBoxW(NULL, to_wide(message), L"Can't start the application", MB_OK | MB_ICONERROR);
+}
+
+/** Java's System.out and System.err follow these handles. */
+void plat_open_log(const char *path) {
+	char *copy = str_dup(path);
+	for (char *p = copy + 3; *p; p++) {
+		if (*p == '\\' || *p == '/') {
+			char separator = *p;
+			*p = '\0';
+			CreateDirectoryW(to_wide(copy), NULL);
+			*p = separator;
+		}
+	}
+	SECURITY_ATTRIBUTES inherit = {sizeof(inherit), NULL, TRUE};
+	HANDLE log = CreateFileW(to_wide(path), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, &inherit, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (log == INVALID_HANDLE_VALUE)
+		return; // the app should still start without its log
+	SetStdHandle(STD_OUTPUT_HANDLE, log);
+	SetStdHandle(STD_ERROR_HANDLE, log);
+}
+
+/** Tells Windows to group this app's taskbar entries by its own ID. */
+void plat_set_app_id(const char *app_id) {
+	typedef HRESULT(WINAPI * set_id_function)(PCWSTR);
+	HMODULE shell = LoadLibraryW(L"shell32.dll");
+	set_id_function set_id = shell ? (set_id_function)(void *)GetProcAddress(shell, "SetCurrentProcessExplicitAppUserModelID") : NULL;
+	if (set_id)
+		set_id(to_wide(app_id));
+}
+
+int plat_change_dir(const char *path) {
+	return SetCurrentDirectoryW(to_wide(path));
+}
+
+int plat_same_extension(const char *a, const char *b) {
+	return _stricmp(a, b) == 0;
+}
+
+/** JNI option strings use the system code page, so a path outside it can't be passed. */
+char *plat_encode_option(const char *text, char **error) {
+	wchar_t *wide = to_wide(text);
+	BOOL lossy = FALSE;
+	int length = WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, wide, -1, NULL, 0, NULL, &lossy);
+	if (lossy) {
+		*error = str_fmt("This value contains characters the Windows system code page can't represent, so Java can't be given it:\n%s", text);
+		return NULL;
+	}
+	char *result = malloc((size_t)length);
+	WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, wide, -1, result, length, NULL, NULL);
+	return result;
+}
+
+void *plat_load_jvm(const char *home, char **error) {
+	// the JVM's libraries sit next to each other in bin, and java.dll is loaded from there
+	SetDllDirectoryW(to_wide(plat_join(home, "bin")));
+	char *path = plat_join(home, "bin\\server\\jvm.dll");
+	HMODULE jvm = LoadLibraryW(to_wide(path));
+	if (!jvm) {
+		*error = str_fmt("Can't load %s (Windows error %lu).", path, GetLastError());
+		return NULL;
+	}
+	void *create_vm = (void *)GetProcAddress(jvm, "JNI_CreateJavaVM");
+	if (!create_vm)
+		*error = str_fmt("%s has no JNI_CreateJavaVM.", path);
+	return create_vm;
+}
+
+typedef struct {
+	void (*work)(void *);
+	void *parameter;
+} thread_start;
+
+static DWORD WINAPI run_thread(void *parameter) {
+	thread_start *start = parameter;
+	start->work(start->parameter);
+	return 0;
+}
+
+int plat_run_thread(void (*work)(void *), void *parameter, size_t stack_bytes) {
+	thread_start start = {work, parameter};
+	HANDLE thread = CreateThread(NULL, stack_bytes, run_thread, &start, STACK_SIZE_PARAM_IS_A_RESERVATION, NULL);
+	if (!thread)
+		return 0;
+	WaitForSingleObject(thread, INFINITE);
+	return 1;
+}
+
 char *plat_read_file(const char *path) {
 	FILE *file = _wfopen(to_wide(path), L"rb");
 	if (!file)

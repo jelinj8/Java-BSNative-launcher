@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-windows:
+  build-windows-x64:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,31 +30,126 @@ jobs:
           path: build/launcher.exe
           if-no-files-found: error
 
-  test-windows:
-    needs: build-windows
-    runs-on: windows-latest
+  build-windows-arm64:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          architecture: aarch64
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          update: false
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-cmake
+            mingw-w64-clang-aarch64-ninja
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          export JAVA_HOME="$(cygpath -u "$JAVA_HOME")"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+      - uses: actions/upload-artifact@v6
+        with:
+          name: launcher-win-arm64
+          path: build/launcher.exe
+          if-no-files-found: error
+
+  # Built in an older distribution, so the binary also runs on older systems. glibc is backward
+  # compatible only: a binary built on a newer system refuses to start on an older one.
+  build-linux:
     strategy:
       fail-fast: false
       matrix:
+        include:
+          - name: linux-x64
+            runner: ubuntu-24.04
+          - name: linux-aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build
+        run: |
+          docker run --rm -v "$PWD:/src" -v "$JAVA_HOME:/jdk:ro" -w /src -e JAVA_HOME=/jdk debian:bullseye-slim sh -c '
+            apt-get update -qq &&
+            apt-get install -y -qq gcc libc6-dev make cmake > /dev/null &&
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release &&
+            cmake --build build &&
+            ctest --test-dir build --output-on-failure &&
+            chmod -R a+rwX build'
+      - name: Show the newest glibc it needs
+        run: objdump -T build/launcher | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1
+      - uses: actions/upload-artifact@v6
+        with:
+          name: launcher-${{ matrix.name }}
+          path: build/launcher
+          if-no-files-found: error
+
+  test:
+    needs: [build-windows-x64, build-windows-arm64, build-linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: win-x64
+            runner: windows-latest
+            file: launcher.exe
+            architecture: x64
+          - name: linux-x64
+            runner: ubuntu-24.04
+            file: launcher
+            architecture: x64
+          - name: linux-aarch64
+            runner: ubuntu-24.04-arm
+            file: launcher
+            architecture: aarch64
         java: ['11', '21', '25']
+        include:
+          - java: '21'
+            platform:
+              name: win-arm64
+              runner: windows-11-arm
+              file: launcher.exe
+              architecture: aarch64
+          - java: '25'
+            platform:
+              name: win-arm64
+              runner: windows-11-arm
+              file: launcher.exe
+              architecture: aarch64
+    name: test (${{ matrix.platform.name }}, ${{ matrix.java }})
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
+          architecture: ${{ matrix.platform.architecture }}
       - uses: actions/download-artifact@v7
         with:
-          name: launcher-win-x64
+          name: launcher-${{ matrix.platform.name }}
           path: built
       - name: Integration tests
         shell: pwsh
         timeout-minutes: 5
-        run: ./test/integration.ps1 -Launcher (Resolve-Path built/launcher.exe) -JavaHome $env:JAVA_HOME
+        env:
+          LC_ALL: C.UTF-8
+        run: ./test/integration.ps1 -Launcher (Resolve-Path built/${{ matrix.platform.file }}) -JavaHome $env:JAVA_HOME
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test-windows
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -69,14 +164,17 @@ jobs:
           fi
       - uses: actions/download-artifact@v7
         with:
-          name: launcher-win-x64
           path: built
       - name: Prepare files
         run: |
           mkdir dist
-          cp built/launcher.exe dist/bsnative-launcher-win-x64.exe
+          cp built/launcher-win-x64/launcher.exe dist/bsnative-launcher-win-x64.exe
+          cp built/launcher-win-arm64/launcher.exe dist/bsnative-launcher-win-arm64.exe
+          cp built/launcher-linux-x64/launcher dist/bsnative-launcher-linux-x64
+          cp built/launcher-linux-aarch64/launcher dist/bsnative-launcher-linux-aarch64
+          chmod +x dist/bsnative-launcher-linux-*
           cd dist
-          sha256sum *.exe > SHA256SUMS.txt
+          sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Create the release
         env:

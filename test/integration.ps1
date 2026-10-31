@@ -1,4 +1,5 @@
-# Runs the built launcher against a real JDK. Usage: integration.ps1 <launcher.exe> <JDK home>
+# Runs the built launcher against a real JDK, on any platform, with PowerShell 7.
+# Usage: integration.ps1 <launcher binary> <JDK home>
 param([string]$Launcher, [string]$JavaHome)
 $ErrorActionPreference = 'Stop'
 $failures = 0
@@ -7,19 +8,22 @@ $env:JAVA_HOME = $JavaHome
 
 $work = Join-Path ([IO.Path]::GetTempPath()) "bsnative-it-$PID"
 New-Item -ItemType Directory $work | Out-Null
+$work = (Resolve-Path $work).Path
 $classes = Join-Path $work 'classes'
-& "$JavaHome\bin\javac" --release 11 -d $classes (Join-Path $PSScriptRoot 'app\TestApp.java')
+& (Join-Path $JavaHome 'bin/javac') --release 11 -d $classes (Join-Path $PSScriptRoot 'app/TestApp.java')
 $jar = Join-Path $work 'testapp.jar'
-& "$JavaHome\bin\jar" --create --file $jar -C $classes .
+& (Join-Path $JavaHome 'bin/jar') --create --file $jar -C $classes .
 
 function New-App($Dir, $Ini, $Name = 'MyApp') {
 	New-Item -ItemType Directory (Join-Path $Dir 'lib') -Force | Out-Null
-	Copy-Item $jar (Join-Path $Dir 'lib\testapp.jar')
-	Copy-Item $Launcher (Join-Path $Dir "$Name.exe")
+	Copy-Item $jar (Join-Path $Dir 'lib/testapp.jar')
+	$exe = Join-Path $Dir $(if ($IsWindows) { "$Name.exe" } else { $Name })
+	Copy-Item $Launcher $exe
+	if (-not $IsWindows) { & chmod +x $exe }
 	if ($null -ne $Ini) {
 		[IO.File]::WriteAllText((Join-Path $Dir "$Name.ini"), $Ini, (New-Object Text.UTF8Encoding($false)))
 	}
-	return (Join-Path $Dir "$Name.exe")
+	return $exe
 }
 
 function Invoke-App($Exe, $Arguments = @()) {
@@ -38,6 +42,10 @@ function Invoke-App($Exe, $Arguments = @()) {
 
 function Check($Name, $Condition, $Detail) {
 	if ($Condition) { Write-Host "ok   $Name" } else { Write-Host "FAIL $Name`n$($Detail | Out-String)"; $script:failures++ }
+}
+
+function WorkDirIs($Result, $Dir) {
+	return $Result.Out -match ('workdir=' + [regex]::Escape($Dir) + '\r?\n')
 }
 
 $basic = "main-class=TestApp`nclasspath=lib/*`n"
@@ -64,6 +72,10 @@ $exe = New-App (Join-Path $work 'renamed') $basic 'Another Name'
 $r = Invoke-App $exe
 Check 'finds the ini by its own name, with a space' ($r.Code -eq 0 -and $r.Out -match 'main finished') $r
 
+$exe = New-App (Join-Path $work 'dotted') $basic 'my.app'
+$r = Invoke-App $exe
+Check 'a dot in the name stays part of it' ($r.Code -eq 0 -and $r.Out -match 'main finished') $r
+
 $r = Invoke-App (New-App (Join-Path $work 'noini') $null)
 Check 'missing ini is reported' ($r.Code -eq 2 -and $r.Err -match 'Configuration file not found') $r
 
@@ -85,12 +97,13 @@ Check 'explicit runtime path' ($r.Code -eq 0) $r
 
 $dir = Join-Path $work 'bundled'
 $exe = New-App $dir $basic
-New-Item -ItemType Junction (Join-Path $dir 'runtime') -Target $JavaHome | Out-Null
+$itemType = if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }
+New-Item -ItemType $itemType (Join-Path $dir 'runtime') -Target $JavaHome | Out-Null
 $saved = $env:JAVA_HOME
-$env:JAVA_HOME = 'C:\no\such\java'
+$env:JAVA_HOME = (Join-Path $work 'no-such-java')
 $env:BSNATIVE_LAUNCHER_DRY_RUN = '1'
 $r = Invoke-App $exe
-Check 'bundled runtime wins over a broken JAVA_HOME' ($r.Code -eq 0 -and $r.Out -match 'home=.*bundled\\runtime') $r
+Check 'bundled runtime wins over a broken JAVA_HOME' ($r.Code -eq 0 -and $r.Out -match [regex]::Escape('home=' + (Join-Path $dir 'runtime'))) $r
 Remove-Item env:BSNATIVE_LAUNCHER_DRY_RUN
 $r = Invoke-App $exe
 Check 'and it really runs' ($r.Code -eq 0 -and $r.Out -match 'main finished') $r
@@ -106,23 +119,23 @@ if ($r.Code -eq 0) { Check 'non-ASCII argument arrives' ($r.Out -match 'main fin
 
 $dir = Join-Path $work 'wd-default'
 $r = Invoke-App (New-App $dir $basic)
-Check 'working directory defaults to the app folder' ($r.Out -match ('workdir=' + [regex]::Escape($dir) + '\r?\n')) $r
+Check 'working directory defaults to the app folder' (WorkDirIs $r $dir) $r
 
 $dir = Join-Path $work 'wd-inherit'
 $r = Invoke-App (New-App $dir ($basic + "working-dir=inherit`n"))
-Check 'working-dir=inherit keeps the caller''s folder' ($r.Out -match ('workdir=' + [regex]::Escape($work) + '\r?\n')) $r
+Check 'working-dir=inherit keeps the caller''s folder' (WorkDirIs $r $work) $r
 
 $dir = Join-Path $work 'wd-relative'
 New-Item -ItemType Directory (Join-Path $dir 'data') | Out-Null
 $r = Invoke-App (New-App $dir ($basic + "working-dir=data`n"))
-Check 'a relative working-dir is under the app folder' ($r.Out -match ('workdir=' + [regex]::Escape((Join-Path $dir 'data')) + '\r?\n')) $r
+Check 'a relative working-dir is under the app folder' (WorkDirIs $r (Join-Path $dir 'data')) $r
 
 $r = Invoke-App (New-App (Join-Path $work 'wd-bad') ($basic + "working-dir=no-such-folder`n"))
 Check 'a missing working-dir is reported' ($r.Code -eq 2 -and $r.Err -match 'working-dir') $r
 
 $log = Join-Path $work 'logged'
 $r = Invoke-App (New-App $log ($basic + "log-file=logs/deep/app.log`n"))
-$logFile = Join-Path $log 'logs\deep\app.log'
+$logFile = Join-Path $log 'logs/deep/app.log'
 Check 'log-file receives output, creating folders' ((Test-Path $logFile) -and ((Get-Content $logFile -Raw) -match 'main finished')) $r
 
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue

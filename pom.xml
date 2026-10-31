@@ -35,7 +35,7 @@
 	</scm>
 
 	<properties>
-		<revision>0.1.0</revision>
+		<revision>0.2.0</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<!-- the binaries GitHub Actions built, placed here by scripts/publish-central.ps1 -->
 		<binaries.dir>${project.basedir}/dist</binaries.dir>
@@ -85,6 +85,21 @@
 									<file>${binaries.dir}/bsnative-launcher-win-x64.exe</file>
 									<type>exe</type>
 									<classifier>win-x64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-win-arm64.exe</file>
+									<type>exe</type>
+									<classifier>win-arm64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-linux-x64</file>
+									<type>bin</type>
+									<classifier>linux-x64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-linux-aarch64</file>
+									<type>bin</type>
+									<classifier>linux-aarch64</classifier>
 								</artifact>
 							</artifacts>
 						</configuration>

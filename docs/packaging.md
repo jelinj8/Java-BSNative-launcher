@@ -5,6 +5,9 @@ The launcher is published to Maven Central as a plain file, so an app's build on
 | Platform | Coordinates |
 |---|---|
 | Windows x64 | `cz.bliksoft.java:bsnative-launcher:<version>:exe:win-x64` |
+| Windows ARM64 | `cz.bliksoft.java:bsnative-launcher:<version>:exe:win-arm64` |
+| Linux x64 | `cz.bliksoft.java:bsnative-launcher:<version>:bin:linux-x64` |
+| Linux ARM64, including 64-bit Raspberry Pi OS | `cz.bliksoft.java:bsnative-launcher:<version>:bin:linux-aarch64` |
 
 Binaries and their checksums are also on [GitHub Releases](https://github.com/jelinj8/Java-BSNative-launcher/releases).
 
@@ -25,7 +28,7 @@ This example puts everything in `target/dist/MyApp`. Add an ini file as `src/dis
           <artifactItem>
             <groupId>cz.bliksoft.java</groupId>
             <artifactId>bsnative-launcher</artifactId>
-            <version>0.1.0</version>
+            <version>0.2.0</version>
             <type>exe</type>
             <classifier>win-x64</classifier>
             <outputDirectory>${project.build.directory}/dist/MyApp</outputDirectory>
@@ -51,4 +54,4 @@ Also copy the app's own jar to `lib/` and the ini next to the exe, for example w
 
 The exe is never patched, so one version of the launcher can serve any number of apps.
 
-JavaFX and other platform-specific jars must match the target platform.
+JavaFX and other platform-specific jars must match the target platform. On Linux, Maven doesn't keep the executable permission, so set it when packaging: `fileMode` 0755 in `maven-assembly-plugin`, or `chmod +x`. The Linux launcher needs glibc 2.31 or newer, so it won't run on musl systems such as Alpine.

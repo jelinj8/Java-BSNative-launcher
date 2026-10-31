@@ -57,7 +57,28 @@ int runtime_select(const launcher_config *config, const char *app_dir, java_runt
 /** Expands classpath entries into one string. Returns NULL with a message in *error. */
 char *classpath_build(const launcher_config *config, const char *app_dir, char **error);
 
+/** Runs the app described by the ini next to exe, returning the process exit code. */
+int launcher_run(const char *exe, const char *app_dir, const strlist *command_line);
+
 // Provided by each platform.
+/** Tells the user why the app can't start. */
+void plat_report_error(const char *message);
+void plat_write_stdout(const char *text);
+void plat_write_stderr(const char *text);
+int plat_has_stderr(void);
+/** Sends the app's output to this file, creating folders. Failing is not an error. */
+void plat_open_log(const char *path);
+void plat_set_app_id(const char *app_id);
+int plat_change_dir(const char *path);
+/** Whether a file name's extension matches, using the platform's rules for case. */
+int plat_same_extension(const char *a, const char *b);
+/** Converts to the encoding JNI options need. NULL with a message in *error if impossible. */
+char *plat_encode_option(const char *text, char **error);
+/** Returns JNI_CreateJavaVM from the runtime, or NULL with a message in *error. */
+void *plat_load_jvm(const char *home, char **error);
+/** Runs work on a new thread and waits for it. Returns 0 if it can't start. */
+int plat_run_thread(void (*work)(void *), void *parameter, size_t stack_bytes);
+
 char *plat_read_file(const char *path);
 int plat_is_dir(const char *path);
 int plat_is_absolute(const char *path);

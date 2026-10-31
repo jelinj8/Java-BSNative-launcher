@@ -1,6 +1,6 @@
 # The ini file
 
-The launcher reads `<its own name>.ini` from its own folder. So `StorageManager.exe` reads `StorageManager.ini`. The file is UTF-8, with one `key=value` per line. Lines starting with `#` or `;` are comments; a `#` later in a line is part of the value. Unknown keys are errors, so typos don't go unnoticed.
+The launcher reads `<its own name>.ini` from its own folder, leaving out any `.exe`. So `StorageManager.exe` or `StorageManager` reads `StorageManager.ini`. The file is UTF-8, with one `key=value` per line. Lines starting with `#` or `;` are comments; a `#` later in a line is part of the value. Unknown keys are errors, so typos don't go unnoticed.
 
 | Key | Required | Meaning |
 |---|---|---|
@@ -24,14 +24,14 @@ With `runtime=auto`, the first of these with a usable Java wins, and the newest 
 1. `runtime` folder next to the launcher
 2. `JAVA_HOME`
 3. Installed JDKs in the Windows registry: `SOFTWARE\Eclipse Adoptium\JDK` and `SOFTWARE\JavaSoft\JDK`
-4. `java.exe` on `PATH`
+4. `java` on `PATH`
 
 A Java is usable if its `release` file gives a version within `min-java` and `max-java`, and an architecture matching the launcher. If none is usable, the launcher lists what it tried and why each was rejected.
 
 ## Good to know
 
 - **JavaFX:** a main class that extends `Application` can start directly with JavaFX on the classpath, without the separate launcher class the `java` command needs. Tested with one real app.
-- **Encoding:** Java takes JVM options and the classpath in the Windows system code page. A path with characters outside it fails with a clear message. Application arguments aren't affected.
-- **Errors:** startup failures show a dialog and exit with code 2. A Java exception escaping `main` exits with code 1.
-- **Console:** there's no console window. When started from a terminal, output goes to that terminal, but the terminal doesn't wait for the app to finish.
+- **Encoding:** on Windows, Java takes JVM options and the classpath in the system code page, and a path with characters outside it fails with a clear message. On Linux, Java decodes them using the locale. Application arguments aren't affected.
+- **Errors:** startup failures show a dialog and exit with code 2. On Linux, that means stderr, plus `zenity`, `kdialog` or `xmessage` if available when not started from a terminal. A Java exception escaping `main` exits with code 1.
+- **Console:** on Windows there's no console window. When started from a terminal, output goes to that terminal, but the terminal doesn't wait for the app to finish.
 - **Environment variables:** `BSNATIVE_LAUNCHER_NO_DIALOG=1` writes errors only to stderr, for scripts. `BSNATIVE_LAUNCHER_DRY_RUN=1` prints the selected Java and classpath, then exits.

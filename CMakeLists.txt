@@ -13,7 +13,7 @@ set(COMMON src/common/launcher.c)
 
 if(WIN32)
 	enable_language(RC)
-	add_executable(launcher WIN32 src/windows/main.c src/windows/platform.c src/windows/launcher.rc ${COMMON})
+	add_executable(launcher WIN32 src/windows/main.c src/windows/platform.c src/windows/launcher.rc src/common/launch.c ${COMMON})
 	target_include_directories(launcher PRIVATE "${JDK_HOME}/include" "${JDK_HOME}/include/win32")
 	target_compile_definitions(launcher PRIVATE UNICODE _UNICODE)
 	# no dependency on MinGW's runtime DLLs, so one copied file is all an app needs
@@ -21,8 +21,15 @@ if(WIN32)
 
 	add_executable(unit_tests test/unit_tests.c src/windows/platform.c ${COMMON})
 	target_compile_definitions(unit_tests PRIVATE UNICODE _UNICODE)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	add_executable(launcher src/posix/main.c src/posix/platform.c src/common/launch.c ${COMMON})
+	target_include_directories(launcher PRIVATE "${JDK_HOME}/include" "${JDK_HOME}/include/linux")
+	target_link_libraries(launcher PRIVATE dl pthread)
+
+	add_executable(unit_tests test/unit_tests.c src/posix/platform.c ${COMMON})
+	target_link_libraries(unit_tests PRIVATE dl pthread)
 else()
-	message(FATAL_ERROR "Only Windows is implemented so far")
+	message(FATAL_ERROR "Only Windows and Linux are implemented so far")
 endif()
 
 enable_testing()
