@@ -71,8 +71,13 @@ static void create_parent_dirs(const char *path) {
 static void open_log(const launcher_config *config, const char *app_dir) {
 	if (!config->log_file || !*config->log_file)
 		return;
-	char *path = plat_is_absolute(config->log_file) ? plat_join(config->log_file, "") : plat_join(app_dir, config->log_file);
-	path[strlen(path) - 1] = '\0'; // plat_join normalized the slashes and added one
+	char *path;
+	if (plat_is_absolute(config->log_file)) {
+		path = plat_join(config->log_file, "");
+		path[strlen(path) - 1] = '\0'; // plat_join normalized the slashes and added one
+	} else {
+		path = plat_join(app_dir, config->log_file);
+	}
 	create_parent_dirs(path);
 	SECURITY_ATTRIBUTES inherit = {sizeof(inherit), NULL, TRUE};
 	HANDLE log = CreateFileW(to_wide(path), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, &inherit, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
