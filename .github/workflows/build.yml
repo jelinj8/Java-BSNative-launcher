@@ -120,12 +120,6 @@ jobs:
               runner: windows-11-arm
               file: launcher.exe
               architecture: aarch64
-          - java: '25'
-            platform:
-              name: win-arm64
-              runner: windows-11-arm
-              file: launcher.exe
-              architecture: aarch64
     name: test (${{ matrix.platform.name }}, ${{ matrix.java }})
     runs-on: ${{ matrix.platform.runner }}
     steps:

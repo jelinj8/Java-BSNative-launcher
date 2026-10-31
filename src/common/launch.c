@@ -175,7 +175,9 @@ int launcher_run(const char *exe, const char *app_dir, const strlist *command_li
 		plat_report_error(str_fmt("%s\n%s", ini_path, error));
 		return EXIT_LAUNCHER_ERROR;
 	}
-	if (config.log_file && *config.log_file)
+	char *dry_run = plat_getenv("BSNATIVE_LAUNCHER_DRY_RUN");
+	int is_dry_run = dry_run && *dry_run;
+	if (config.log_file && *config.log_file && !is_dry_run)
 		plat_open_log(resolve(app_dir, config.log_file));
 	if (config.app_id)
 		plat_set_app_id(config.app_id);
@@ -209,8 +211,7 @@ int launcher_run(const char *exe, const char *app_dir, const strlist *command_li
 		return EXIT_LAUNCHER_ERROR;
 	}
 
-	char *dry_run = plat_getenv("BSNATIVE_LAUNCHER_DRY_RUN");
-	if (dry_run && *dry_run) {
+	if (is_dry_run) {
 		plat_write_stdout(str_fmt("home=%s\nversion=%s\nclasspath=%s\n", runtime.home, runtime.version, classpath));
 		return 0;
 	}
