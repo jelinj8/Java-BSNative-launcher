@@ -1,12 +1,13 @@
 // Windows entry point: finds <exe name>.ini next to the exe, and runs Java inside this process, so
 // the OS and tools that identify apps by executable see this exe rather than java.exe.
+#include "platform_win.h"
+
 #include <jni.h>
 #include <shellapi.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
-#include "platform_win.h"
 
 #define EXIT_LAUNCHER_ERROR 2
 #define MAIN_THREAD_STACK_BYTES (1024 * 1024)
