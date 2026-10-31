@@ -4,6 +4,7 @@ public class TestApp {
 		System.out.println("version=" + System.getProperty("java.version"));
 		System.out.println("classpath=" + System.getProperty("java.class.path"));
 		System.out.println("testprop=" + System.getProperty("testprop"));
+		System.out.println("workdir=" + System.getProperty("user.dir"));
 		for (String arg : args) {
 			System.out.println("arg=" + arg);
 			if (arg.startsWith("exit:"))

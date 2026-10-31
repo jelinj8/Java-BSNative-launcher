@@ -25,7 +25,8 @@ function New-App($Dir, $Ini, $Name = 'MyApp') {
 function Invoke-App($Exe, $Arguments = @()) {
 	$out = Join-Path $work 'out.txt'
 	$err = Join-Path $work 'err.txt'
-	$info = @{ FilePath = $Exe; Wait = $true; PassThru = $true; RedirectStandardOutput = $out; RedirectStandardError = $err }
+	# from an unrelated folder, so working-dir tests prove something
+	$info = @{ FilePath = $Exe; Wait = $true; PassThru = $true; RedirectStandardOutput = $out; RedirectStandardError = $err; WorkingDirectory = $work }
 	if ($Arguments.Count) { $info.ArgumentList = $Arguments }
 	$process = Start-Process @info
 	return @{
@@ -102,6 +103,22 @@ $r = Invoke-App (New-App $dir ($basic + "arg=" + [char]0x010D + "esky`n"))
 $clear = $r.Code -eq 0 -or $r.Err -match 'code page'
 Check 'non-ASCII path runs or fails clearly' $clear $r
 if ($r.Code -eq 0) { Check 'non-ASCII argument arrives' ($r.Out -match 'main finished') $r }
+
+$dir = Join-Path $work 'wd-default'
+$r = Invoke-App (New-App $dir $basic)
+Check 'working directory defaults to the app folder' ($r.Out -match ('workdir=' + [regex]::Escape($dir) + '\r?\n')) $r
+
+$dir = Join-Path $work 'wd-inherit'
+$r = Invoke-App (New-App $dir ($basic + "working-dir=inherit`n"))
+Check 'working-dir=inherit keeps the caller''s folder' ($r.Out -match ('workdir=' + [regex]::Escape($work) + '\r?\n')) $r
+
+$dir = Join-Path $work 'wd-relative'
+New-Item -ItemType Directory (Join-Path $dir 'data') | Out-Null
+$r = Invoke-App (New-App $dir ($basic + "working-dir=data`n"))
+Check 'a relative working-dir is under the app folder' ($r.Out -match ('workdir=' + [regex]::Escape((Join-Path $dir 'data')) + '\r?\n')) $r
+
+$r = Invoke-App (New-App (Join-Path $work 'wd-bad') ($basic + "working-dir=no-such-folder`n"))
+Check 'a missing working-dir is reported' ($r.Code -eq 2 -and $r.Err -match 'working-dir') $r
 
 $log = Join-Path $work 'logged'
 $r = Invoke-App (New-App $log ($basic + "log-file=logs/deep/app.log`n"))

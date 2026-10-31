@@ -13,6 +13,7 @@ The launcher reads `<its own name>.ini` from its own folder. So `StorageManager.
 | `arg` | No | One application argument per line, placed before command-line arguments. Repeatable |
 | `app-id` | No | Windows taskbar grouping ID |
 | `log-file` | No | File to append the app's output to. Folders are created |
+| `working-dir` | No | The app's working directory: a path, or `inherit` to keep the caller's. Default: the launcher's folder |
 
 Relative paths are relative to the launcher's folder. Values can use `${APP_DIR}` and `${ENV:NAME}`; a variable that isn't set becomes empty.
 
@@ -29,6 +30,7 @@ A Java is usable if its `release` file gives a version within `min-java` and `ma
 
 ## Good to know
 
+- **JavaFX:** a main class that extends `Application` can start directly with JavaFX on the classpath, without the separate launcher class the `java` command needs. Tested with one real app.
 - **Encoding:** Java takes JVM options and the classpath in the Windows system code page. A path with characters outside it fails with a clear message. Application arguments aren't affected.
 - **Errors:** startup failures show a dialog and exit with code 2. A Java exception escaping `main` exits with code 1.
 - **Console:** there's no console window. When started from a terminal, output goes to that terminal, but the terminal doesn't wait for the app to finish.

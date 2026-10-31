@@ -235,6 +235,17 @@ static int launch(void) {
 	open_log(&config, app_dir);
 	apply_app_id(&config);
 
+	// the app's folder by default, so relative paths work however it was started
+	if (!config.working_dir || strcmp(config.working_dir, "inherit") != 0) {
+		char *dir = app_dir;
+		if (config.working_dir && *config.working_dir)
+			dir = plat_is_absolute(config.working_dir) ? config.working_dir : plat_join(app_dir, config.working_dir);
+		if (!SetCurrentDirectoryW(to_wide(dir))) {
+			report_error(str_fmt("Can't use working-dir %s (Windows error %lu).", dir, GetLastError()));
+			return EXIT_LAUNCHER_ERROR;
+		}
+	}
+
 	java_runtime runtime;
 	strlist report = {0};
 	if (!runtime_select(&config, app_dir, &runtime, &report)) {

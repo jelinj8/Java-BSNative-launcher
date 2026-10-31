@@ -44,7 +44,8 @@ static void test_ini(void) {
 	_wputenv(L"BSN_TEST_VAR=fromenv");
 	CHECK(config_parse("\xEF\xBB\xBF# comment\r\n; comment\r\n\r\n main-class = com.example.Main \r\nclasspath=lib/*\nclasspath=${APP_DIR}/x.jar\n"
 			"min-java=21\nmax-java=25\njvm-option=-Xmx1m\njvm-option=-Da=b=c\narg=${ENV:BSN_TEST_VAR}\narg=#notacomment\n"
-			"runtime=auto\napp-id=my.app\nlog-file=logs/a.log\n", "C:\\app", &c, &error) == 0);
+			"runtime=auto\napp-id=my.app\nlog-file=logs/a.log\nworking-dir=inherit\n", "C:\\app", &c, &error) == 0);
+	CHECK_STR(c.working_dir, "inherit");
 	CHECK_STR(c.main_class, "com.example.Main");
 	CHECK(c.classpath.count == 2);
 	CHECK_STR(c.classpath.items[1], "C:\\app/x.jar");

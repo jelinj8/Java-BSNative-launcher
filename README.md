@@ -19,7 +19,7 @@ min-java=21
 
 Java runs inside the launcher's own process through the standard JNI invocation API, so the app's windows belong to your exe.
 
-The launcher doesn't change the exe's icon or version information, so it needs no patching and a signature would survive the rename. Your app's windows and any shortcuts can still have their own icons.
+Every copy has the same generic play icon and the description "Java application", so nothing is patched and a signature would survive the rename. Your app's windows, and so its taskbar entry, and any shortcuts can have their own icons.
 
 **Status:** Windows x64 only so far. Linux is planned.
 

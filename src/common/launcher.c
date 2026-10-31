@@ -118,6 +118,8 @@ int config_parse(const char *text, const char *app_dir, launcher_config *config,
 			config->app_id = value;
 		} else if (strcmp(key, "log-file") == 0) {
 			config->log_file = value;
+		} else if (strcmp(key, "working-dir") == 0) {
+			config->working_dir = value;
 		} else if (strcmp(key, "min-java") == 0 || strcmp(key, "max-java") == 0) {
 			int *target = key[1] == 'i' ? &config->min_java : &config->max_java;
 			if (!parse_int(value, target)) {

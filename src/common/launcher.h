@@ -23,6 +23,7 @@ typedef struct {
 	strlist args;
 	char *app_id;
 	char *log_file;
+	char *working_dir;
 } launcher_config;
 
 /** Parses ini text. Returns 0, or -1 with a message in *error. */
