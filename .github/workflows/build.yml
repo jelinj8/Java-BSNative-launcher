@@ -1,5 +1,7 @@
 name: Build
 
+# Platforms use the names of javacpp.platform, so a Maven build can select its launcher by that.
+
 on:
   push:
     branches: ['**']
@@ -10,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  build-windows-x64:
+  build-windows-x86_64:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -26,7 +28,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - uses: actions/upload-artifact@v6
         with:
-          name: launcher-win-x64
+          name: launcher-windows-x86_64
           path: build/launcher.exe
           if-no-files-found: error
 
@@ -56,7 +58,7 @@ jobs:
           ctest --test-dir build --output-on-failure
       - uses: actions/upload-artifact@v6
         with:
-          name: launcher-win-arm64
+          name: launcher-windows-arm64
           path: build/launcher.exe
           if-no-files-found: error
 
@@ -67,9 +69,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: linux-x64
+          - name: linux-x86_64
             runner: ubuntu-24.04
-          - name: linux-aarch64
+          - name: linux-arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
@@ -94,32 +96,63 @@ jobs:
           path: build/launcher
           if-no-files-found: error
 
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macosx-arm64
+            runner: macos-15
+          - name: macosx-x86_64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+      - uses: actions/upload-artifact@v6
+        with:
+          name: launcher-${{ matrix.name }}
+          path: build/launcher
+          if-no-files-found: error
+
   test:
-    needs: [build-windows-x64, build-windows-arm64, build-linux]
+    needs: [build-windows-x86_64, build-windows-arm64, build-linux, build-macos]
     strategy:
       fail-fast: false
       matrix:
         platform:
-          - name: win-x64
+          - name: windows-x86_64
             runner: windows-latest
             file: launcher.exe
-            architecture: x64
-          - name: linux-x64
+          - name: linux-x86_64
             runner: ubuntu-24.04
             file: launcher
-            architecture: x64
-          - name: linux-aarch64
+          - name: linux-arm64
             runner: ubuntu-24.04-arm
             file: launcher
-            architecture: aarch64
+          - name: macosx-arm64
+            runner: macos-15
+            file: launcher
+          - name: macosx-x86_64
+            runner: macos-15-intel
+            file: launcher
         java: ['11', '21', '25']
         include:
+          # Temurin has no JDK 25 for Windows ARM64
           - java: '21'
             platform:
-              name: win-arm64
+              name: windows-arm64
               runner: windows-11-arm
               file: launcher.exe
-              architecture: aarch64
     name: test (${{ matrix.platform.name }}, ${{ matrix.java }})
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -128,7 +161,6 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
-          architecture: ${{ matrix.platform.architecture }}
       - uses: actions/download-artifact@v7
         with:
           name: launcher-${{ matrix.platform.name }}
@@ -161,11 +193,13 @@ jobs:
       - name: Prepare files
         run: |
           mkdir dist
-          cp built/launcher-win-x64/launcher.exe dist/bsnative-launcher-win-x64.exe
-          cp built/launcher-win-arm64/launcher.exe dist/bsnative-launcher-win-arm64.exe
-          cp built/launcher-linux-x64/launcher dist/bsnative-launcher-linux-x64
-          cp built/launcher-linux-aarch64/launcher dist/bsnative-launcher-linux-aarch64
-          chmod +x dist/bsnative-launcher-linux-*
+          for platform in windows-x86_64 windows-arm64; do
+            cp "built/launcher-$platform/launcher.exe" "dist/bsnative-launcher-$platform.exe"
+          done
+          for platform in linux-x86_64 linux-arm64 macosx-x86_64 macosx-arm64; do
+            cp "built/launcher-$platform/launcher" "dist/bsnative-launcher-$platform"
+          done
+          chmod +x dist/bsnative-launcher-linux-* dist/bsnative-launcher-macosx-*
           cd dist
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt

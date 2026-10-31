@@ -82,24 +82,34 @@
 						<configuration>
 							<artifacts>
 								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-win-x64.exe</file>
-									<type>exe</type>
-									<classifier>win-x64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-win-arm64.exe</file>
-									<type>exe</type>
-									<classifier>win-arm64</classifier>
-								</artifact>
-								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-linux-x64</file>
+									<file>${binaries.dir}/bsnative-launcher-windows-x86_64.exe</file>
 									<type>bin</type>
-									<classifier>linux-x64</classifier>
+									<classifier>windows-x86_64</classifier>
 								</artifact>
 								<artifact>
-									<file>${binaries.dir}/bsnative-launcher-linux-aarch64</file>
+									<file>${binaries.dir}/bsnative-launcher-windows-arm64.exe</file>
 									<type>bin</type>
-									<classifier>linux-aarch64</classifier>
+									<classifier>windows-arm64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-linux-x86_64</file>
+									<type>bin</type>
+									<classifier>linux-x86_64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-linux-arm64</file>
+									<type>bin</type>
+									<classifier>linux-arm64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-macosx-x86_64</file>
+									<type>bin</type>
+									<classifier>macosx-x86_64</classifier>
+								</artifact>
+								<artifact>
+									<file>${binaries.dir}/bsnative-launcher-macosx-arm64</file>
+									<type>bin</type>
+									<classifier>macosx-arm64</classifier>
 								</artifact>
 							</artifacts>
 						</configuration>

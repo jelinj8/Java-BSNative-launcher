@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Oldest macOS supported")
 project(java_native_launcher C)
 
 set(CMAKE_C_STANDARD 11)
@@ -28,8 +29,15 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 	add_executable(unit_tests test/unit_tests.c src/posix/platform.c ${COMMON})
 	target_link_libraries(unit_tests PRIVATE dl pthread)
+elseif(APPLE)
+	add_executable(launcher src/posix/main.c src/posix/platform.c src/common/launch.c ${COMMON})
+	target_include_directories(launcher PRIVATE "${JDK_HOME}/include" "${JDK_HOME}/include/darwin")
+	target_link_libraries(launcher PRIVATE "-framework CoreFoundation")
+
+	add_executable(unit_tests test/unit_tests.c src/posix/platform.c ${COMMON})
+	target_link_libraries(unit_tests PRIVATE "-framework CoreFoundation")
 else()
-	message(FATAL_ERROR "Only Windows and Linux are implemented so far")
+	message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
 enable_testing()

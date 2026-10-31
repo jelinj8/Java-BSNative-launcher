@@ -11,6 +11,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#define LIBJVM "lib/server/libjvm.dylib"
+#else
+#define LIBJVM "lib/server/libjvm.so"
+#endif
+
 #include "../common/launcher.h"
 
 const char PLAT_PATH_SEPARATOR = ':';
@@ -88,8 +95,21 @@ void plat_report_error(const char *message) {
 	char *no_dialog = plat_getenv("BSNATIVE_LAUNCHER_NO_DIALOG");
 	if ((no_dialog && *no_dialog) || isatty(2))
 		return;
+#ifdef __APPLE__
+	(void)show_dialog;
+	pid_t child = fork();
+	if (child == 0) {
+		execlp("osascript", "osascript", "-e", "on run argv", "-e",
+				"display alert \"Can't start the application\" message (item 1 of argv) as critical", "-e", "end run",
+				message, (char *)NULL);
+		_exit(127);
+	}
+	if (child > 0)
+		waitpid(child, NULL, 0);
+#else
 	if (getenv("DISPLAY") || getenv("WAYLAND_DISPLAY"))
 		show_dialog(message);
+#endif
 }
 
 void plat_open_log(const char *path) {
@@ -128,7 +148,7 @@ char *plat_encode_option(const char *text, char **error) {
 }
 
 void *plat_load_jvm(const char *home, char **error) {
-	char *path = plat_join(home, "lib/server/libjvm.so");
+	char *path = plat_join(home, LIBJVM);
 	void *jvm = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
 	if (!jvm) {
 		*error = str_fmt("Can't load %s: %s", path, dlerror());
@@ -145,11 +165,21 @@ typedef struct {
 	void *parameter;
 } thread_start;
 
+static volatile int thread_finished;
+
 static void *run_thread(void *parameter) {
 	thread_start *start = parameter;
 	start->work(start->parameter);
+	thread_finished = 1;
 	return NULL;
 }
+
+#ifdef __APPLE__
+static void keep_run_loop_alive(CFRunLoopTimerRef timer, void *info) {
+	(void)timer;
+	(void)info;
+}
+#endif
 
 int plat_run_thread(void (*work)(void *), void *parameter, size_t stack_bytes) {
 	thread_start start = {work, parameter};
@@ -159,6 +189,14 @@ int plat_run_thread(void (*work)(void *), void *parameter, size_t stack_bytes) {
 	pthread_t thread;
 	if (pthread_create(&thread, &attributes, run_thread, &start) != 0)
 		return 0;
+#ifdef __APPLE__
+	// macOS GUI work must happen on the process's first thread, so like the java command, that
+	// thread stays available running this loop. A run loop with no source would return at once.
+	CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent() + 1.0e9, 1.0e9, 0, 0, keep_run_loop_alive, NULL);
+	CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopDefaultMode);
+	while (!thread_finished)
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
+#endif
 	pthread_join(thread, NULL);
 	return 1;
 }
@@ -229,7 +267,14 @@ static void add_unique_home(strlist *homes, const char *path) {
 }
 
 void plat_installed_homes(strlist *homes) {
+#ifdef __APPLE__
+	const char *home_dir = getenv("HOME");
+	const char *const roots[] = {"/Library/Java/JavaVirtualMachines", home_dir ? str_fmt("%s/Library/Java/JavaVirtualMachines", home_dir) : "/nonexistent"};
+	const char *const inside = "Contents/Home";
+#else
 	const char *const roots[] = {"/usr/lib/jvm", "/usr/java", "/opt/java", "/opt"};
+	const char *const inside = NULL;
+#endif
 	for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); i++) {
 		DIR *listing = opendir(roots[i]);
 		if (!listing)
@@ -238,9 +283,11 @@ void plat_installed_homes(strlist *homes) {
 			if (entry->d_name[0] == '.')
 				continue;
 			char *path = plat_join(roots[i], entry->d_name);
+			if (inside)
+				path = plat_join(path, inside);
 			// /opt holds all sorts of software, so only offer what looks like a Java home
 			struct stat info;
-			if (plat_is_dir(path) && stat(plat_join(path, "lib/server/libjvm.so"), &info) == 0)
+			if (plat_is_dir(path) && stat(plat_join(path, LIBJVM), &info) == 0)
 				add_unique_home(homes, path);
 		}
 		closedir(listing);

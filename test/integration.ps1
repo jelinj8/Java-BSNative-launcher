@@ -8,7 +8,7 @@ $env:JAVA_HOME = $JavaHome
 
 $work = Join-Path ([IO.Path]::GetTempPath()) "bsnative-it-$PID"
 New-Item -ItemType Directory $work | Out-Null
-$work = (Resolve-Path $work).Path
+$work = if ($IsWindows) { (Resolve-Path $work).Path } else { (& realpath $work) } # macOS links its temp folder
 $classes = Join-Path $work 'classes'
 & (Join-Path $JavaHome 'bin/javac') --release 11 -d $classes (Join-Path $PSScriptRoot 'app/TestApp.java')
 $jar = Join-Path $work 'testapp.jar'

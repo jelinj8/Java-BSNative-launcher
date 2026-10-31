@@ -23,7 +23,7 @@ With `runtime=auto`, the first of these with a usable Java wins, and the newest 
 
 1. `runtime` folder next to the launcher
 2. `JAVA_HOME`
-3. Installed JDKs. On Windows, the registry: `SOFTWAREclipse AdoptiumJDK` and `SOFTWAREJavaSoftJDK`. On Linux: `/usr/lib/jvm`, `/usr/java`, `/opt/java` and `/opt`
+3. Installed JDKs. On Windows, the registry: `SOFTWARE\Eclipse Adoptium\JDK` and `SOFTWARE\JavaSoft\JDK`. On Linux: `/usr/lib/jvm`, `/usr/java`, `/opt/java` and `/opt`. On macOS: `/Library/Java/JavaVirtualMachines` and the same under your home folder
 4. `java` on `PATH`
 
 A Java is usable if its `release` file gives a version within `min-java` and `max-java`, and an architecture matching the launcher. If none is usable, the launcher lists what it tried and why each was rejected.
@@ -31,7 +31,7 @@ A Java is usable if its `release` file gives a version within `min-java` and `ma
 ## Good to know
 
 - **JavaFX:** a main class that extends `Application` can start directly with JavaFX on the classpath, without the separate launcher class the `java` command needs. Tested with one real app.
-- **Encoding:** on Windows, Java takes JVM options and the classpath in the system code page, and a path with characters outside it fails with a clear message. On Linux, Java decodes them using the locale. Application arguments aren't affected.
-- **Errors:** startup failures show a dialog and exit with code 2. On Linux, that means stderr, plus `zenity`, `kdialog` or `xmessage` if available when not started from a terminal. A Java exception escaping `main` exits with code 1.
+- **Encoding:** on Windows, Java takes JVM options and the classpath in the system code page, and a path with characters outside it fails with a clear message. On Linux and macOS, Java decodes them using the locale. Application arguments aren't affected.
+- **Errors:** startup failures show a dialog and exit with code 2. On Linux, that means stderr, plus `zenity`, `kdialog` or `xmessage` if available when not started from a terminal. On macOS, stderr plus a system alert. A Java exception escaping `main` exits with code 1.
 - **Console:** on Windows there's no console window. When started from a terminal, output goes to that terminal, but the terminal doesn't wait for the app to finish.
 - **Environment variables:** `BSNATIVE_LAUNCHER_NO_DIALOG=1` writes errors only to stderr, for scripts. `BSNATIVE_LAUNCHER_DRY_RUN=1` prints the selected Java and classpath, then exits.
