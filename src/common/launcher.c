@@ -299,7 +299,7 @@ char *classpath_build(const launcher_config *config, const char *app_dir, char *
 				strlist_add(&entries, path);
 				continue;
 			}
-			path[strlen(path) - 1] = '\0';
+			path[strlen(path) - 2] = '\0'; // the separator and the *
 			strlist jars = {0};
 			plat_list_jars(path, &jars);
 			if (jars.count == 0) {
