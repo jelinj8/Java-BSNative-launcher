@@ -23,7 +23,7 @@ With `runtime=auto`, the first of these with a usable Java wins, and the newest 
 
 1. `runtime` folder next to the launcher
 2. `JAVA_HOME`
-3. Installed JDKs in the Windows registry: `SOFTWARE\Eclipse Adoptium\JDK` and `SOFTWARE\JavaSoft\JDK`
+3. Installed JDKs. On Windows, the registry: `SOFTWAREclipse AdoptiumJDK` and `SOFTWAREJavaSoftJDK`. On Linux: `/usr/lib/jvm`, `/usr/java`, `/opt/java` and `/opt`
 4. `java` on `PATH`
 
 A Java is usable if its `release` file gives a version within `min-java` and `max-java`, and an architecture matching the launcher. If none is usable, the launcher lists what it tried and why each was rejected.

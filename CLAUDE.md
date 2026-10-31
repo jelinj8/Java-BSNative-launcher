@@ -12,7 +12,7 @@ A native launcher that's copied and renamed per app, reads `<name>.ini`, finds a
 
 ## Commands
 
-No compiler may be installed locally. GitHub Actions builds every push (`gh run download` fetches `launcher-<platform>`). Linux builds use an old Debian image to stay compatible with older glibc.
+No compiler may be installed locally. GitHub Actions builds every push (`gh run download` fetches `launcher-<platform>`). Linux builds use an AlmaLinux 8 image to stay compatible with older glibc.
 
 ```
 cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release && cmake --build build

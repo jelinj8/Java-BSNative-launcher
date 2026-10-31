@@ -54,4 +54,4 @@ Also copy the app's own jar to `lib/` and the ini next to the exe, for example w
 
 The exe is never patched, so one version of the launcher can serve any number of apps.
 
-JavaFX and other platform-specific jars must match the target platform. On Linux, Maven doesn't keep the executable permission, so set it when packaging: `fileMode` 0755 in `maven-assembly-plugin`, or `chmod +x`. The Linux launcher needs glibc 2.31 or newer, so it won't run on musl systems such as Alpine.
+JavaFX and other platform-specific jars must match the target platform. On Linux, Maven doesn't keep the executable permission, so set it when packaging: `fileMode` 0755 in `maven-assembly-plugin`, or `chmod +x`. The Linux launcher needs glibc 2.28 or newer, so it won't run on musl systems such as Alpine.
